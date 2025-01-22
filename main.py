@@ -3,7 +3,7 @@ import os
 from yt_dlp import YoutubeDL
 
 # Bot credentials
-BOT_TOKEN = "7932482559:AAFcTZeRpZledQaaM66FHJi9JuhdDCJ4uL4"
+BOT_TOKEN = ""
 API_ID = 29754529
 API_HASH = "dd54732e78650479ac4fb0e173fe4759"
 
@@ -30,6 +30,7 @@ async def download_video(client, message):
             "outtmpl": output_template,
             "restrictfilenames": True,
             "nocheckcertificate": True,
+            "extractor-args": "generic:impersonate",
         }
         
         # Download the video
