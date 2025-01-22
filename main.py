@@ -81,8 +81,10 @@ async def download_video(client, message):
                 "nocheckcertificate": True,
                 "extractor-args": {"generic": {"impersonate": "firefox"}},
                 "progress_hooks": [lambda d: asyncio.create_task(download_progress_hook(d, progress_message))],
-                "http_headers": {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+                "external_downloader_args": {
+                    "ffmpeg": [
+                        "-headers", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+                    ]
                 }
             }
             with YoutubeDL(ydl_opts) as ydl:
