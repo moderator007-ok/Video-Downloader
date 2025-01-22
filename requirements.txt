@@ -6,3 +6,6 @@ gunicorn==20.1.0
 Jinja2==3.0.3
 werkzeug==2.0.2
 itsdangerous==2.0.1
+aiohttp  # For async m3u8 downloads
+ffmpeg-python  # Python wrapper for FFmpeg
+m3u8  # To handle m3u8 playlists
