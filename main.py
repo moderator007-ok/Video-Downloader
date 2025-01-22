@@ -18,7 +18,6 @@ API_HASH = os.getenv("API_HASH")
 # Initialize Pyrogram client
 app = Client("yt-dlp_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
 
-
 # Progress handlers
 async def download_progress_hook(d, progress_message):
     if d["status"] == "downloading":
@@ -27,21 +26,21 @@ async def download_progress_hook(d, progress_message):
         percentage = (downloaded_bytes / total_bytes * 100) if total_bytes else 0
         await progress_message.edit_text(f"Downloading: {percentage:.2f}%")
 
-
 async def upload_progress(current, total, progress_message):
     percentage = current / total * 100
     await progress_message.edit_text(f"Uploading: {percentage:.2f}%")
-
 
 # Check for m3u8 format
 def is_m3u8_format(url):
     return ".m3u8" in url
 
-
 # Handle m3u8 download
 def download_m3u8_with_python(url, output_file):
     scraper = cloudscraper.create_scraper()
-    response = scraper.get(url)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    }
+    response = scraper.get(url, headers=headers)
     m3u8_obj = m3u8.loads(response.text)
     base_url = url.rsplit("/", 1)[0]
 
@@ -49,9 +48,8 @@ def download_m3u8_with_python(url, output_file):
     with open(output_file, "wb") as outfile:
         for ts_file in ts_files:
             ts_url = f"{base_url}/{ts_file}"
-            ts_data = scraper.get(ts_url).content
+            ts_data = scraper.get(ts_url, headers=headers).content
             outfile.write(ts_data)
-
 
 # Convert to mp4
 def convert_to_mp4(input_file, output_file):
@@ -60,7 +58,6 @@ def convert_to_mp4(input_file, output_file):
         logging.info(f"Converted {input_file} to {output_file}")
     except ffmpeg.Error as e:
         logging.error(f"Error converting file: {e}")
-
 
 @app.on_message(filters.command("download") & filters.private)
 async def download_video(client, message):
@@ -84,6 +81,9 @@ async def download_video(client, message):
                 "nocheckcertificate": True,
                 "extractor-args": {"generic": {"impersonate": "firefox"}},
                 "progress_hooks": [lambda d: asyncio.create_task(download_progress_hook(d, progress_message))],
+                "http_headers": {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+                }
             }
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
@@ -113,7 +113,6 @@ async def download_video(client, message):
     except Exception as e:
         logging.error(f"Error downloading video: {e}")
         await message.reply(f"An error occurred: {e}")
-
 
 if __name__ == "__main__":
     logging.info("Bot is running...")
