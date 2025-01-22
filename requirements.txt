@@ -12,3 +12,4 @@ m3u8  # To handle m3u8 playlists
 requests
 tgcrypto
 cloudscraper
+python-socks
