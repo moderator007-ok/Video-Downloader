@@ -58,6 +58,7 @@ def convert_to_mp4(input_file, output_file):
         logging.info(f"Converted {input_file} to {output_file}")
     except ffmpeg.Error as e:
         logging.error(f"Error converting file: {e}")
+        raise
 
 @app.on_message(filters.command("download") & filters.private)
 async def download_video(client, message):
@@ -99,7 +100,10 @@ async def download_video(client, message):
         for file_path in downloaded_files:
             if not file_path.endswith(".mp4"):
                 mp4_file_path = os.path.splitext(file_path)[0] + ".mp4"
-                convert_to_mp4(file_path, mp4_file_path)
+                try:
+                    convert_to_mp4(file_path, mp4_file_path)
+                except ffmpeg.Error as e:
+                    await message.reply(f"Error converting file: {e}")
                 file_path = mp4_file_path
 
             await client.send_document(chat_id, file_path, progress=upload_progress, progress_args=(progress_message,))
