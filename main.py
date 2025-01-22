@@ -5,11 +5,15 @@ import asyncio
 import requests
 import m3u8  # To handle m3u8 playlists
 import ffmpeg  # Python wrapper for FFmpeg
+import logging
 
-# Bot credentials
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-API_ID = 29754529
-API_HASH = "YOUR_API_HASH"
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Bot credentials from environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
 
 # Initialize Pyrogram Client
 app = Client("yt-dlp_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH)
@@ -41,12 +45,18 @@ def download_m3u8_with_python(url, output_file):
             ts_data = requests.get(ts_url).content
             outfile.write(ts_data)
 
-# Command to download video
+def convert_to_mp4(input_file, output_file):
+    try:
+        ffmpeg.input(input_file).output(output_file, codec='copy').run(overwrite_output=True)
+        logging.info(f"Converted {input_file} to {output_file}")
+    except ffmpeg.Error as e:
+        logging.error(f"Error converting file: {e}")
+
 @app.on_message(filters.command("download") & filters.private)
 async def download_video(client, message):
     try:
         url = message.text.split(" ", 1)[1]
-        chat_id = str(message.chat.id)  # Use chat ID as directory name
+        chat_id = str(message.chat.id)
         progress_message = await message.reply("Downloading your video... Please wait!")
         
         # Directory specific to the user (based on chat ID)
@@ -60,6 +70,7 @@ async def download_video(client, message):
             download_m3u8_with_python(url, output_file)
         else:
             # YoutubeDL options
+            loop = asyncio.get_event_loop()
             ydl_opts = {
                 "format": "best",
                 "outtmpl": output_template,
@@ -74,25 +85,37 @@ async def download_video(client, message):
                 ydl.download([url])
         
         # Find the downloaded file
-        downloaded_files = os.listdir(output_dir)
-        downloaded_files = [os.path.join(output_dir, f) for f in downloaded_files if os.path.isfile(os.path.join(output_dir, f))]
+        downloaded_files = [
+            os.path.join(output_dir, f) 
+            for f in os.listdir(output_dir) 
+            if os.path.isfile(os.path.join(output_dir, f))
+        ]
         
-        # Send the downloaded video to the user
         for file_path in downloaded_files:
-            await client.send_document(chat_id, file_path, progress=upload_progress, progress_args=(progress_message,))
+            # Convert to mp4 if not already in mp4 format
+            if not file_path.endswith(".mp4"):
+                mp4_file_path = os.path.splitext(file_path)[0] + ".mp4"
+                convert_to_mp4(file_path, mp4_file_path)
+                file_path = mp4_file_path
+
+            await client.send_document(
+                chat_id, 
+                file_path, 
+                progress=upload_progress, 
+                progress_args=(progress_message,)
+            )
         
         await progress_message.edit_text("Download and upload completed successfully!")
 
-        # Cleanup downloaded files
         for file_path in downloaded_files:
             os.remove(file_path)
-        os.rmdir(output_dir)  # Remove user-specific directory after sending files
+        os.rmdir(output_dir)
     except IndexError:
         await message.reply("Please provide a valid URL. Usage: `/download <URL>`")
     except Exception as e:
+        logging.error(f"Error downloading video: {e}")
         await message.reply(f"An error occurred: {e}")
 
-# Start the bot
 if __name__ == "__main__":
-    print("Bot is running...")
+    logging.info("Bot is running...")
     app.run()
