@@ -11,3 +11,4 @@ ffmpeg-python  # Python wrapper for FFmpeg
 m3u8  # To handle m3u8 playlists
 requests
 tgcrypto
+cloudscraper
