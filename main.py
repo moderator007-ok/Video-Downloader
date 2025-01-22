@@ -3,9 +3,9 @@ import asyncio
 import logging
 import cloudscraper
 import m3u8
-import ffmpeg
 from yt_dlp import YoutubeDL
 from pyrogram import Client, filters
+import ffmpeg
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -41,6 +41,7 @@ def download_m3u8_with_python(url, output_file):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
     }
     response = scraper.get(url, headers=headers)
+    response.raise_for_status()
     m3u8_obj = m3u8.loads(response.text)
     base_url = url.rsplit("/", 1)[0]
 
@@ -49,6 +50,8 @@ def download_m3u8_with_python(url, output_file):
         for ts_file in ts_files:
             ts_url = f"{base_url}/{ts_file}"
             ts_data = scraper.get(ts_url, headers=headers).content
+            if not ts_data:
+                raise ValueError(f"Failed to download segment: {ts_url}")
             outfile.write(ts_data)
 
 # Convert to mp4
@@ -80,13 +83,11 @@ async def download_video(client, message):
                 "outtmpl": output_template,
                 "restrictfilenames": True,
                 "nocheckcertificate": True,
-                "extractor-args": {"generic": {"impersonate": "firefox"}},
+                "extractor-args": {"generic": {"impersonate": "cloudflare"}},
                 "progress_hooks": [lambda d: asyncio.create_task(download_progress_hook(d, progress_message))],
-                "external_downloader_args": {
-                    "ffmpeg": [
-                        "-headers", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-                    ]
-                }
+                "external_downloader_args": [
+                    "--header", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+                ]
             }
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
