@@ -1,6 +1,7 @@
 from pyrogram import Client, filters
 import os
 from yt_dlp import YoutubeDL
+import importlib.util
 
 # Bot credentials
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -24,6 +25,9 @@ async def download_video(client, message):
         os.makedirs(output_dir, exist_ok=True)
         output_template = os.path.join(output_dir, "%(title)s.%(ext)s")
         
+        # Check if pycryptodomex is available
+        crypto_installed = importlib.util.find_spec("Cryptodome") is not None
+
         # YoutubeDL options
         ydl_opts = {
             "format": "best",
@@ -31,6 +35,7 @@ async def download_video(client, message):
             "restrictfilenames": True,
             "nocheckcertificate": True,
             "extractor-args": "generic:impersonate",
+            "hls_use_mpegts": True if crypto_installed else False,
         }
         
         # Download the video
