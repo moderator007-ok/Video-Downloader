@@ -2,6 +2,7 @@ from pyrogram import Client, filters
 import os
 from yt_dlp import YoutubeDL
 import importlib.util
+from tqdm import tqdm
 
 # Bot credentials
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -38,6 +39,23 @@ async def download_video(client, message):
             "hls_use_mpegts": True if crypto_installed else False,
         }
         
+        # Progress bar for downloading
+        class DownloadProgressHook:
+            def __init__(self):
+                self.pbar = None
+
+            def __call__(self, d):
+                if d['status'] == 'downloading':
+                    if self.pbar is None:
+                        self.pbar = tqdm(total=d['total_bytes'], unit='B', unit_scale=True)
+                    self.pbar.update(d['downloaded_bytes'] - self.pbar.n)
+                elif d['status'] == 'finished':
+                    self.pbar.close()
+                    self.pbar = None
+
+        # Add the progress hook to ydl_opts
+        ydl_opts['progress_hooks'] = [DownloadProgressHook()]
+        
         # Download the video
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
@@ -46,9 +64,12 @@ async def download_video(client, message):
         downloaded_files = os.listdir(output_dir)
         downloaded_files = [os.path.join(output_dir, f) for f in downloaded_files if os.path.isfile(os.path.join(output_dir, f))]
         
-        # Send the downloaded video to the user
+        # Progress bar for uploading
         for file_path in downloaded_files:
-            await message.reply_document(file_path)
+            file_size = os.path.getsize(file_path)
+            with tqdm(total=file_size, unit='B', unit_scale=True, desc="Uploading") as pbar:
+                async with client.send_document(chat_id, file_path, progress=pbar.update):
+                    pass
         
         # Cleanup downloaded files
         for file_path in downloaded_files:
