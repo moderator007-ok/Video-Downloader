@@ -13,3 +13,4 @@ requests
 tgcrypto
 cloudscraper
 python-socks
+pycryptodomex
