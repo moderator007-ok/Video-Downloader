@@ -46,10 +46,11 @@ async def download_video(client, message):
 
             def __call__(self, d):
                 if d['status'] == 'downloading':
-                    if self.pbar is None:
+                    if self.pbar is None and 'total_bytes' in d:
                         self.pbar = tqdm(total=d['total_bytes'], unit='B', unit_scale=True)
-                    self.pbar.update(d['downloaded_bytes'] - self.pbar.n)
-                elif d['status'] == 'finished':
+                    if 'downloaded_bytes' in d and self.pbar is not None:
+                        self.pbar.update(d['downloaded_bytes'] - self.pbar.n)
+                elif d['status'] == 'finished' and self.pbar is not None:
                     self.pbar.close()
                     self.pbar = None
 
