@@ -3,6 +3,11 @@ import os
 from yt_dlp import YoutubeDL
 import importlib.util
 from tqdm import tqdm
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Bot credentials
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -19,6 +24,7 @@ async def download_video(client, message):
         # Extract URL from the message
         url = message.text.split(" ", 1)[1]
         chat_id = str(message.chat.id)  # Use chat ID as directory name
+        logger.info(f"Received download request from chat ID: {chat_id} for URL: {url}")
         await message.reply("Downloading your video... Please wait!")
         
         # Directory specific to the user (based on chat ID)
@@ -28,6 +34,7 @@ async def download_video(client, message):
         
         # Check if pycryptodomex is available
         crypto_installed = importlib.util.find_spec("Cryptodome") is not None
+        logger.info(f"Pycryptodomex installed: {crypto_installed}")
 
         # YoutubeDL options
         ydl_opts = {
@@ -50,7 +57,9 @@ async def download_video(client, message):
                         self.pbar = tqdm(total=d['total_bytes'], unit='B', unit_scale=True)
                     if 'downloaded_bytes' in d and self.pbar is not None:
                         self.pbar.update(d['downloaded_bytes'] - self.pbar.n)
+                    logger.info(f"Downloading: {d.get('filename', 'unknown')} {d.get('downloaded_bytes', 0)}/{d.get('total_bytes', 0)}")
                 elif d['status'] == 'finished' and self.pbar is not None:
+                    logger.info(f"Download finished: {d.get('filename', 'unknown')}")
                     self.pbar.close()
                     self.pbar = None
 
@@ -68,6 +77,7 @@ async def download_video(client, message):
         # Progress bar for uploading
         for file_path in downloaded_files:
             file_size = os.path.getsize(file_path)
+            logger.info(f"Uploading file: {file_path} (size: {file_size})")
             with tqdm(total=file_size, unit='B', unit_scale=True, desc="Uploading") as pbar:
                 async with client.send_document(chat_id, file_path, progress=pbar.update):
                     pass
@@ -76,12 +86,14 @@ async def download_video(client, message):
         for file_path in downloaded_files:
             os.remove(file_path)
         os.rmdir(output_dir)  # Remove user-specific directory after sending files
+        logger.info(f"Cleanup completed for chat ID: {chat_id}")
     except IndexError:
         await message.reply("Please provide a valid URL. Usage: `/download <URL>`")
     except Exception as e:
+        logger.error(f"An error occurred: {e}")
         await message.reply(f"An error occurred: {e}")
 
 # Start the bot
 if __name__ == "__main__":
-    print("Bot is running...")
+    logger.info("Bot is running...")
     app.run()
